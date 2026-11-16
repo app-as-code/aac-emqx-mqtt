@@ -1,0 +1,141 @@
+service:
+  name: aac-emqx-mqtt
+  image_repo: emqx/emqx
+  image_tag: 6.3.2
+  description: MQTT Broker & Dashboard
+  icon: emqx.png
+  category: Management
+  stage: prod
+  hostname: mqtt
+ports:
+- name: dashboard
+  port: 18083
+  external_port: 18083
+  protocol: TCP
+- name: mqtt
+  port: 1883
+  external_port: 1883
+  protocol: TCP
+- name: mqtts
+  port: 8883
+  external_port: 8883
+  protocol: TCP
+- name: ws
+  port: 8083
+  external_port: 8083
+  protocol: TCP
+- name: wss
+  port: 8084
+  external_port: 8084
+  protocol: TCP
+- name: cluster-rpc
+  port: 4370
+  external_port: 4370
+  protocol: TCP
+config:
+  domain_name: example.com
+  generate_hostname: false
+  integrations:
+    homepage:
+      enabled: true
+    autodns:
+      enabled: true
+      create_wildcard: false
+    traefik:
+      enabled: true
+      cert_resolver: ionos
+      entrypoint: websecure
+  schema_version: 2
+stage_overrides:
+  prod:
+    config:
+      generate_hostname: false
+    service:
+      hostname: emqx
+secrets:
+  EMQX_NODE_COOKIE: secret_cookie_value
+  EMQX_DASHBOARD__DEFAULT_PASSWORD: CHANGE_ME
+  EMQX_MQTT_PASSWORD: CHANGE_ME
+volumes:
+  data:
+    description: EMQX data files
+  logs:
+    description: EMQX log files
+  emqx_conf:
+    description: EMQX base config (auth + listeners), managed by the SSoT
+    type: bind
+    file: custom_emqx/custom_emqx.conf
+  emqx_users:
+    description: EMQX built-in-DB bootstrap users
+    type: bind
+    file: custom_emqx/emqx_bootstrap_users.csv
+deployment_strategy:
+  main:
+    enabled: true
+    target_stage: prod
+  dev:
+    enabled: true
+    target_stage: dev
+  test:
+    enabled: false
+    target_stage: test
+  ansible-dev:
+    enabled: true
+    target_stage: dev
+  iac-dev:
+    enabled: true
+    target_stage: dev
+  template-dev:
+    enabled: true
+    target_stage: dev
+deployments:
+  docker_compose:
+    restart_policy: always
+    host_base_path: /export/docker
+    volumes:
+    - data:/opt/emqx/data
+    - logs:/opt/emqx/log
+    - emqx_conf:/opt/emqx/etc/emqx.conf
+    - emqx_users:/opt/emqx/etc/custom_emqx/emqx_bootstrap_users.csv
+    environment:
+      EMQX_NAME: '{{ vars.EMQX_NAME }}'
+      EMQX_LISTENER__TCP__EXTERNAL: '{{ vars.EMQX_LISTENER__TCP__EXTERNAL }}'
+      EMQX_STORAGE__SUBSCRIPTIONS: '{{ vars.EMQX_STORAGE__SUBSCRIPTIONS }}'
+      EMQX_DASHBOARD__DEFAULT_USERNAME: '{{ vars.EMQX_DASHBOARD__DEFAULT_USERNAME
+        }}'
+      EMQX_RATE_LIMIT__PACKETS__PER_SECOND: '{{ vars.EMQX_RATE_LIMIT__PACKETS__PER_SECOND
+        }}'
+      TZ: '{{ vars.TZ }}'
+      EMQX_ALLOW_ANONYMOUS: '{{ vars.EMQX_ALLOW_ANONYMOUS }}'
+      EMQX_RATE_LIMIT__MESSAGES__MAX: '{{ vars.EMQX_RATE_LIMIT__MESSAGES__MAX }}'
+      EMQX_LISTENER__WS__EXTERNAL: '{{ vars.EMQX_LISTENER__WS__EXTERNAL }}'
+      PUID: '{{ vars.PUID }}'
+      EMQX_LISTENER__SSL__EXTERNAL: '{{ vars.EMQX_LISTENER__SSL__EXTERNAL }}'
+      EMQX_LISTENER__WSS__EXTERNAL: '{{ vars.EMQX_LISTENER__WSS__EXTERNAL }}'
+      EMQX_NODE_NAME: '{{ vars.EMQX_NODE_NAME }}'
+      EMQX_ACL__ALLOW_ALL: '{{ vars.EMQX_ACL__ALLOW_ALL }}'
+      EMQX_RATE_LIMIT__CONNECTIONS__MAX: '{{ vars.EMQX_RATE_LIMIT__CONNECTIONS__MAX
+        }}'
+      PGID: '{{ vars.PGID }}'
+      EMQX_NODE_COOKIE: '{{ secrets.EMQX_NODE_COOKIE }}'
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: '{{ secrets.EMQX_DASHBOARD__DEFAULT_PASSWORD
+        }}'
+      EMQX_DURABLE_SESSIONS__ENABLE: '{{ vars.EMQX_DURABLE_SESSIONS__ENABLE }}'
+vars:
+  EMQX_NAME: emqx
+  EMQX_LISTENER__TCP__EXTERNAL: '1883'
+  EMQX_STORAGE__SUBSCRIPTIONS: 'True'
+  EMQX_DASHBOARD__DEFAULT_USERNAME: admin
+  EMQX_RATE_LIMIT__PACKETS__PER_SECOND: '1000000'
+  TZ: Europe/Berlin
+  EMQX_ALLOW_ANONYMOUS: 'true'
+  EMQX_RATE_LIMIT__MESSAGES__MAX: '1000000'
+  EMQX_LISTENER__WS__EXTERNAL: '8083'
+  PUID: '1000'
+  EMQX_LISTENER__SSL__EXTERNAL: '8883'
+  EMQX_LISTENER__WSS__EXTERNAL: '8084'
+  EMQX_DURABLE_SESSIONS__ENABLE: 'false'
+  EMQX_NODE_NAME: emqx@emqx-mqtt
+  EMQX_ACL__ALLOW_ALL: 'true'
+  EMQX_RATE_LIMIT__CONNECTIONS__MAX: '100000'
+  PGID: '1000'

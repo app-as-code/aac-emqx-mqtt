@@ -1,0 +1,52 @@
+## =============================================================================
+## aac-emqx-mqtt | EMQX 6 base config  (managed by the SSoT — do NOT edit on host)
+## -----------------------------------------------------------------------------
+## Rendered from custom_templates/files/ and bind-mounted over
+## /opt/emqx/etc/emqx.conf. Declarative on purpose: a single fixed MQTT user is
+## re-seeded into the built-in database from the bootstrap CSV on EVERY boot, so
+## it SURVIVES a data/mnesia reset (which is exactly what kept breaking z2m<->emqx
+## after backups/restarts — the built-in-db users were gone and the bootstrap
+## file was missing -> "not_authorized" for user 'mqtt').
+##
+## NOTE: the old EMQX_LISTENER__* / EMQX_ALLOW_ANONYMOUS / EMQX_ACL__ALLOW_ALL
+## env vars in service.yml are EMQX 4.x-style and are IGNORED by EMQX 5/6 — the
+## authoritative config now lives HERE. Values EMQX still reads from env
+## (dashboard user/pass, node name/cookie, TZ) keep working because OS env
+## overrides this file.
+## =============================================================================
+
+## --- Node identity (REQUIRED here: the early hocon_cli bootstrap reads ONLY
+## this file with no env-merge, so node.data_dir/name/cookie must be present) --
+node {
+  name = "emqx@emqx-mqtt"
+  cookie = "{{ secrets.EMQX_NODE_COOKIE }}"
+  data_dir = "/opt/emqx/data"
+}
+
+## --- MQTT / WebSocket listeners (explicit v6 schema) -------------------------
+listeners.tcp.default { bind = "0.0.0.0:1883" }
+listeners.ssl.default { bind = "0.0.0.0:8883" }
+listeners.ws.default  { bind = "0.0.0.0:8083" }
+listeners.wss.default { bind = "0.0.0.0:8084" }
+
+## --- Authentication: ONE fixed user, re-seeded from the version-controlled CSV
+authentication = [
+  {
+    mechanism = "password_based"
+    backend = "built_in_database"
+    user_id_type = "username"
+    password_hash_algorithm { name = "sha256", salt_position = "suffix" }
+    bootstrap_file = "/opt/emqx/etc/custom_emqx/emqx_bootstrap_users.csv"
+    bootstrap_type = "plain"
+  }
+]
+
+## --- Authorization: authenticated clients may pub/sub freely (internal LAN) ---
+## The bootstrap user is is_superuser=true, so it bypasses ACLs entirely; no_match
+## = allow keeps any future non-superuser client working too.
+authorization {
+  no_match = "allow"
+  deny_action = "ignore"
+  cache { enable = true }
+  sources = []
+}

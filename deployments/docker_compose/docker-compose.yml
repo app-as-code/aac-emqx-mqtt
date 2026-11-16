@@ -1,0 +1,86 @@
+services:
+  # --- Main Application Service ---
+  aac-emqx-mqtt:
+    image: "emqx/emqx:6.3.2"
+    container_name: "aac-emqx-mqtt"
+    hostname: "emqx"
+    restart: "always"
+
+
+    environment:
+      EMQX_NAME: "emqx"
+      EMQX_LISTENER__TCP__EXTERNAL: "1883"
+      EMQX_STORAGE__SUBSCRIPTIONS: "True"
+      EMQX_DASHBOARD__DEFAULT_USERNAME: "admin"
+      EMQX_RATE_LIMIT__PACKETS__PER_SECOND: "1000000"
+      TZ: "Europe/Berlin"
+      EMQX_ALLOW_ANONYMOUS: "true"
+      EMQX_RATE_LIMIT__MESSAGES__MAX: "1000000"
+      EMQX_LISTENER__WS__EXTERNAL: "8083"
+      PUID: "1000"
+      EMQX_LISTENER__SSL__EXTERNAL: "8883"
+      EMQX_LISTENER__WSS__EXTERNAL: "8084"
+      EMQX_NODE_NAME: "emqx@emqx-mqtt"
+      EMQX_ACL__ALLOW_ALL: "true"
+      EMQX_RATE_LIMIT__CONNECTIONS__MAX: "100000"
+      PGID: "1000"
+      EMQX_NODE_COOKIE: "secret_cookie_value"
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: "${EMQX_DASHBOARD__DEFAULT_PASSWORD:?set EMQX_DASHBOARD__DEFAULT_PASSWORD in .env (see .env.example)}"
+      EMQX_DURABLE_SESSIONS__ENABLE: "false"
+
+    ports:
+      - "18083:18083/tcp"
+      - "1883:1883/tcp"
+      - "8883:8883/tcp"
+      - "8083:8083/tcp"
+      - "8084:8084/tcp"
+      - "4370:4370/tcp"
+
+    volumes:
+      - "/export/docker/aac-emqx-mqtt/data:/opt/emqx/data"
+      - "/export/docker/aac-emqx-mqtt/logs:/opt/emqx/log"
+      - "/export/docker/aac-emqx-mqtt/custom_emqx/custom_emqx.conf:/opt/emqx/etc/emqx.conf"
+      - "/export/docker/aac-emqx-mqtt/custom_emqx/emqx_bootstrap_users.csv:/opt/emqx/etc/custom_emqx/emqx_bootstrap_users.csv"
+
+    networks:
+      - exposed
+      - interconnect
+      - secured
+      - stack_internal
+
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.aac-emqx-mqtt.rule: "Host(`emqx.example.com`)"
+      traefik.http.routers.aac-emqx-mqtt.entrypoints: "websecure"
+      traefik.http.routers.aac-emqx-mqtt.tls: "true"
+      traefik.http.routers.aac-emqx-mqtt.tls.certresolver: "ionos"
+      traefik.docker.network: "services-secured"
+      traefik.http.services.aac-emqx-mqtt.loadbalancer.server.port: "18083"
+      traefik.http.services.aac-emqx-mqtt.loadbalancer.server.scheme: "http"
+      auto-dns.createWildcard.aac-emqx-mqtt: "false"
+      auto-dns.customDNS.aac-emqx-mqtt: "true"
+      auto-dns.customDOMAIN.aac-emqx-mqtt: "example.com"
+      auto-dns.customHost.aac-emqx-mqtt: "emqx"
+      homepage.group: "Management"
+      homepage.name: "Emqx Mqtt"
+      homepage.href: "https://emqx.example.com"
+      homepage.icon: "emqx.png"
+      homepage.description: "MQTT Broker & Dashboard"
+
+
+
+
+networks:
+  secured:
+    name: "services-secured"
+    external: true
+  exposed:
+    name: "services-exposed"
+    external: true
+  interconnect:
+    name: "docker-default"
+    external: true
+  stack_internal:
+    name: "aac-emqx-mqtt_stack_internal"
+    driver: "bridge"
+
